@@ -1,31 +1,22 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import SignOutButton from "./sign-out-button";
+import SignOutButton from "../(dashboard)/sign-out-button";
 
-const NAV = [
-  { code: "00:01", label: "Dashboard", href: "/", internalOnly: false },
-  { code: "00:02", label: "Clients", href: "/clients", internalOnly: true },
-  { code: "00:03", label: "Pipeline", href: "/pipeline", internalOnly: true },
-  { code: "00:04", label: "Job Sites", href: "/projects", internalOnly: true },
-  { code: "00:05", label: "Content Calendar", href: "/content", internalOnly: true },
-  { code: "00:06", label: "Calendar", href: "/calendar", internalOnly: true },
-  { code: "00:07", label: "Tasks", href: "/tasks", internalOnly: true },
-  { code: "00:08", label: "Automations", href: "/automations", internalOnly: true },
-];
-
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) redirect("/login");
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, role")
+    .select("full_name, role, client_id, clients(company_name)")
     .eq("id", authData.user.id)
     .single();
 
-  const isInternal = profile?.role === "owner" || profile?.role === "team";
+  // Internal staff who accidentally hit /portal → redirect to dashboard
+  if (profile?.role === "owner" || profile?.role === "team") redirect("/");
+
+  const clientName = (profile as any)?.clients?.company_name ?? "Client Portal";
 
   return (
     <div className="flex min-h-screen">
@@ -34,12 +25,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <div className="font-mono text-[10px] text-studio-muted tracking-widest mb-1">
             NOBLE GROUP
           </div>
-          <div className="font-display text-lg leading-tight">Production CRM</div>
+          <div className="font-display text-lg leading-tight">Client Portal</div>
+          <div className="text-xs text-studio-muted mt-1 truncate">{clientName}</div>
         </div>
 
         <nav className="flex-1 py-4">
-          {NAV.filter((item) => !item.internalOnly || isInternal).map((item) => (
-            <Link
+          {[
+            { code: "01:01", label: "My Projects", href: "/portal" },
+            { code: "01:02", label: "Content", href: "/portal/content" },
+          ].map((item) => (
+            <a
               key={item.href}
               href={item.href}
               className="flex items-center gap-3 px-5 py-2.5 text-sm text-studio-muted hover:text-studio-text hover:bg-studio-surface2 transition-colors group"
@@ -48,21 +43,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 {item.code}
               </span>
               <span>{item.label}</span>
-            </Link>
+            </a>
           ))}
         </nav>
 
         <div className="px-5 py-4 border-t border-studio-border">
           <div className="text-sm text-studio-text truncate">{profile?.full_name || "—"}</div>
-          <div className="text-xs font-mono text-studio-faint uppercase mb-3">
-            {profile?.role || "—"}
-          </div>
+          <div className="text-xs font-mono text-studio-faint uppercase mb-3">Client</div>
           <SignOutButton />
         </div>
       </aside>
 
       <main className="flex-1 bg-studio-bg overflow-y-auto">
-        <div className="max-w-6xl mx-auto px-8 py-8">{children}</div>
+        <div className="max-w-5xl mx-auto px-8 py-8">{children}</div>
       </main>
     </div>
   );

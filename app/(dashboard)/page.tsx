@@ -13,7 +13,7 @@ function StatCard({ label, value, code }: { label: string; value: string | numbe
 export default async function DashboardPage() {
   const supabase = createClient();
 
-  const [{ count: clientCount }, { count: activeProjects }, { count: scheduledContent }, { count: unpaidInvoices }] =
+  const [{ count: clientCount }, { count: activeProjects }, { count: scheduledContent }, { count: appointmentsThisWeek }] =
     await Promise.all([
       supabase.from("clients").select("*", { count: "exact", head: true }),
       supabase.from("projects").select("*", { count: "exact", head: true }).neq("stage", "complete"),
@@ -21,7 +21,12 @@ export default async function DashboardPage() {
         .from("content_items")
         .select("*", { count: "exact", head: true })
         .in("status", ["planned", "shot", "editing", "ready", "scheduled"]),
-      supabase.from("invoices").select("*", { count: "exact", head: true }).in("status", ["sent", "overdue"]),
+      supabase
+        .from("appointments")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "scheduled")
+        .gte("start_time", new Date().toISOString())
+        .lte("start_time", new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()),
     ]);
 
   return (
@@ -35,13 +40,13 @@ export default async function DashboardPage() {
         <StatCard code="A" label="Active clients" value={clientCount ?? 0} />
         <StatCard code="B" label="Job sites in progress" value={activeProjects ?? 0} />
         <StatCard code="C" label="Content in pipeline" value={scheduledContent ?? 0} />
-        <StatCard code="D" label="Outstanding invoices" value={unpaidInvoices ?? 0} />
+        <StatCard code="D" label="Shoots this week" value={appointmentsThisWeek ?? 0} />
       </div>
 
       <div className="mt-10 rounded-lg border border-studio-border bg-studio-surface p-6">
         <p className="text-sm text-studio-muted">
-          Use the sidebar to manage clients, job sites, the content calendar, and invoices. This
-          dashboard is scoped by your role — clients see only their own projects and invoices.
+          Use the sidebar to manage clients, pipeline, job sites, content calendar, appointments, and automations.
+          Clients log in at <strong>/portal</strong> to view their projects and content deliverables.
         </p>
       </div>
     </div>
