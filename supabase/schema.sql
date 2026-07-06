@@ -188,9 +188,9 @@ create policy "invoice_items_client_read" on invoice_items
 -- Defaults new users to 'client' role — you upgrade yourself/team to
 -- 'owner'/'team' manually in Table Editor after first login (see README).
 -- ----------------------------------------------------------------------------
-create or replace function handle_new_user() returns trigger as $$
+create or replace function public.handle_new_user() returns trigger as $$
 begin
-  insert into profiles (id, full_name, role)
+  insert into public.profiles (id, full_name, role)
   values (new.id, new.raw_user_meta_data->>'full_name', 'client');
   return new;
 end;
